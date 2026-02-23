@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sindh Foot Scanner | Medical AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+</head>
+
+<body>
+    <div class="bg-glow"></div>
+
+    <!-- SCREEN 1: HOME -->
+    <section id="screen-home" class="screen active">
+        <p class="tagline">THURSDAY, FEBRUARY 17TH, 2026 · SINDH, PAKISTAN</p>
+        <h1>Prompt to<br>Production.</h1>
+        <p class="desc">Hospital-grade AI analysis for diabetic foot ulcers. Fast, accurate, and accessible for everyone
+            in Sindh.</p>
+        <div style="display: flex; gap: 15px;">
+            <button class="btn-pill btn-primary" onclick="navigateTo('screen-profile')">
+                Register Now <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- SCREEN 2: PATIENT PROFILE -->
+    <section id="screen-profile" class="screen">
+        <p class="tagline">Patient Information</p>
+        <h1>Profile Info.</h1>
+        <p class="desc">Enter details to generate a personalized medical report.</p>
+
+        <div class="form-container">
+            <div class="input-group">
+                <label>Full Name</label>
+                <input type="text" id="patientName" placeholder="Ahmed Khan">
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Age</label>
+                    <input type="number" id="patientAge" placeholder="45">
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Gender</label>
+                    <select id="patientGender">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Phone Number (Optional)</label>
+                <input type="tel" id="patientPhone" placeholder="+92 300 1234567">
+            </div>
+            <button class="btn-pill btn-primary" onclick="navigateTo('screen-upload')">
+                Continue to Scan <i class="fas fa-camera"></i>
+            </button>
+            <button class="btn-pill btn-ghost" onclick="navigateTo('screen-home')">Go Back</button>
+        </div>
+    </section>
+
+    <!-- SCREEN 3: UPLOAD -->
+    <section id="screen-upload" class="screen">
+        <p class="tagline">Image Capture</p>
+        <h1>Scan Foot.</h1>
+        <p class="desc">Ensure natural light and focus on the affected area.</p>
+
+        <div class="upload-box" id="uploadArea" onclick="document.getElementById('imageInput').click()">
+            <div id="upload-placeholder">
+                <i class="fas fa-cloud-upload-alt fa-3x" style="margin-bottom: 15px;"></i>
+                <p>Click or Drag to Upload</p>
+            </div>
+            <img id="preview-img" style="display: none;">
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+        </div>
+
+        <div style="display: flex; gap: 15px; width: 100%; max-width: 400px;">
+            <button class="btn-pill btn-primary" id="analyzeBtn" onclick="startAnalysis()"
+                style="flex: 2; display: none;">
+                Analyze Image <i class="fas fa-stethoscope"></i>
+            </button>
+            <button class="btn-pill btn-ghost" onclick="navigateTo('screen-profile')" style="flex: 1;">Back</button>
+        </div>
+    </section>
+
+    <!-- SCREEN 4: ANALYZING (Processing) -->
+    <section id="screen-analyzing" class="screen">
+        <span class="loader"></span>
+        <h1 style="margin-top: 30px;">Analyzing...</h1>
+        <p class="desc">Our AI is processing the image for clinical indicators.</p>
+    </section>
+
+    <!-- SCREEN 5: RESULT (4th Functional Screen) -->
+    <section id="screen-result" class="screen res-fullscreen-wrapper">
+        <header class="res-dashboard-header">
+            <div class="res-header-left">
+                <span class="material-icons-outlined res-back-icon"
+                    onclick="navigateTo('screen-upload')">arrow_back</span>
+                <div>
+                    <p class="res-tagline">Clinical Report</p>
+                    <h1 class="res-title">Analysis Result.</h1>
+                </div>
+            </div>
+            <div class="res-header-right">
+                <span class="material-icons-outlined res-icon-gray">person</span>
+                <span class="res-patient-info">Name: <span id="res-patient-name" class="res-text-white">--</span></span>
+                <span class="res-divider">|</span>
+                <span class="res-patient-info">Age: <span id="res-patient-age" class="res-text-white">--</span></span>
+                <span class="res-divider">|</span>
+                <span class="res-patient-info">Gender: <span id="res-patient-gender"
+                        class="res-text-white">--</span></span>
+            </div>
+        </header>
+
+        <main class="res-dashboard-main">
+            <!-- Left Column: Image -->
+            <div class="res-col-left">
+                <div class="res-image-wrapper">
+                    <div class="res-status-badge">
+                        <span class="material-icons-outlined res-icon-sm">check_circle</span> Processed
+                    </div>
+                    <img id="res-img" src="" alt="Clinical wound analysis" />
+                    <div class="res-image-gradient"></div>
+                    <div class="res-image-id">ID: #<span id="res-patient-id">----</span></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Metrics & Dashboard -->
+            <div class="res-col-right">
+                <div class="res-right-content">
+                    <!-- Key Metrics -->
+                    <div class="res-metrics-section">
+                        <h3>Key Metrics</h3>
+                        <div class="res-metrics-grid">
+                            <div class="res-metric-card">
+                                <span class="material-icons-outlined text-blue">palette</span>
+                                <span class="res-metric-val" id="res-redness">0.0%</span>
+                                <span class="res-metric-lbl">Redness</span>
+                            </div>
+                            <div class="res-metric-card">
+                                <span class="material-icons-outlined text-blue">zoom_out_map</span>
+                                <div class="res-metric-val font-inter" id="res-swelling">0<span>/10</span></div>
+                                <span class="res-metric-lbl">Swelling</span>
+                            </div>
+                            <div class="res-metric-card">
+                                <span class="material-icons-outlined text-blue">straighten</span>
+                                <span class="res-metric-val" id="res-wound"
+                                    style="font-family: 'Inter', sans-serif;">0%</span>
+                                <span class="res-metric-lbl">Wound Area</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Assessment Dashboard -->
+                    <div class="res-risk-card">
+                        <div class="res-risk-header flex-between">
+                            <h3 class="flex-align-center gap-2 m-0 text-white">Risk Assessment</h3>
+                            <span class="material-icons-outlined res-warning-icon">warning</span>
+                        </div>
+
+                        <div class="res-risk-bar-bg">
+                            <div class="res-risk-bar-base"></div>
+                            <div class="res-risk-bar-fill" id="res-risk-fill" style="width: 0%;"></div>
+                            <div class="res-risk-bar-needle" id="res-risk-needle" style="left: 0%;"></div>
+                        </div>
+
+                        <div class="res-risk-details flex-between">
+                            <div class="res-risk-text-block">
+                                <p class="res-risk-status-lbl" id="res-status-text">Low Risk / Normal</p>
+                                <div class="res-risk-score" id="res-bold-score">0<span>/100</span></div>
+                            </div>
+                            <div class="res-risk-action-badge flex-align-center">
+                                <span class="material-icons-outlined res-icon-sm">schedule</span>
+                                <span id="res-action-short">NORMAL</span>
+                            </div>
+                        </div>
+
+                        <div class="res-urdu-alert flex-align-center">
+                            <span class="material-icons-outlined mr-3 text-accent-yellow">report_problem</span>
+                            <span id="res-urdu" class="text-white text-sm font-medium"
+                                style="font-family: 'Noto Nastaliq Urdu', serif; font-size: 1.25rem;">سارا نارمل
+                                ہے</span>
+                        </div>
+
+                        <!-- Glowing blur effects -->
+                        <div class="res-glow-blue"></div>
+                        <div class="res-glow-yellow"></div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="res-action-row">
+                        <button class="res-btn-primary flex-align-center justify-center gap-2"
+                            onclick="alert('Record Saved')">
+                            <span class="material-icons-outlined text-xl">save</span> Save Record
+                        </button>
+                        <button class="res-btn-icon flex-align-center justify-center"
+                            onclick="alert('Sharing Report...')">
+                            <span class="material-icons-outlined">share</span>
+                        </button>
+                    </div>
+                    <button class="res-btn-secondary flex-align-center justify-center gap-2" onclick="retakeScan()">
+                        <span class="material-icons-outlined text-xl">refresh</span> Retake Scan
+                    </button>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>
