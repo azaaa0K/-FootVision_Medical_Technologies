@@ -1,7 +1,11 @@
-__pycache__/
-*.pyc
-.env
+# Ignore uploaded images
 static/uploads/*
 !static/uploads/.gitkeep
-.vscode/
-.idea/
+
+# Ignore python cache
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+env/

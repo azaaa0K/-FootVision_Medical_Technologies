@@ -84,6 +84,12 @@ h1 {
     text-transform: uppercase;
 }
 
+.logo {
+    width: 60px;
+    height: auto;
+    margin-bottom: 15px;
+}
+
 .desc {
     color: var(--text-gray);
     max-width: 500px;
@@ -164,6 +170,11 @@ select {
 
 input:focus {
     border-color: var(--text-white);
+}
+
+select option {
+    background-color: var(--bg-black);
+    color: var(--text-white);
 }
 
 /* Upload Area */

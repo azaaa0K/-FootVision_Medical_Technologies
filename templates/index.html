@@ -17,8 +17,9 @@
 
     <!-- SCREEN 1: HOME -->
     <section id="screen-home" class="screen active">
+        <img src="{{ url_for('static', filename='main_log.png') }}" alt="FootVision Logo" class="logo">
         <p class="tagline">THURSDAY, FEBRUARY 17TH, 2026 · SINDH, PAKISTAN</p>
-        <h1>Prompt to<br>Production.</h1>
+        <h1>FootVision Medical<br>Technologies.</h1>
         <p class="desc">Hospital-grade AI analysis for diabetic foot ulcers. Fast, accurate, and accessible for everyone
             in Sindh.</p>
         <div style="display: flex; gap: 15px;">
@@ -47,6 +48,7 @@
                 <div class="input-group" style="flex: 1;">
                     <label>Gender</label>
                     <select id="patientGender">
+                        <option value="" disabled selected>Select Gender</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>
@@ -57,7 +59,10 @@
                 <label>Phone Number (Optional)</label>
                 <input type="tel" id="patientPhone" placeholder="+92 300 1234567">
             </div>
-            <button class="btn-pill btn-primary" onclick="navigateTo('screen-upload')">
+            <p id="profileError"
+                style="color: #ef4444; font-size: 0.85rem; margin-top: -5px; display: none; text-align: center; margin-bottom: 0px;">
+            </p>
+            <button class="btn-pill btn-primary" onclick="validateProfileAndNavigate()">
                 Continue to Scan <i class="fas fa-camera"></i>
             </button>
             <button class="btn-pill btn-ghost" onclick="navigateTo('screen-home')">Go Back</button>
@@ -194,8 +199,7 @@
 
                     <!-- Actions -->
                     <div class="res-action-row">
-                        <button class="res-btn-primary flex-align-center justify-center gap-2"
-                            onclick="alert('Record Saved')">
+                        <button class="res-btn-primary flex-align-center justify-center gap-2" onclick="saveReport()">
                             <span class="material-icons-outlined text-xl">save</span> Save Record
                         </button>
                         <button class="res-btn-icon flex-align-center justify-center"

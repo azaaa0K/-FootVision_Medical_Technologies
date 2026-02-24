@@ -15,6 +15,45 @@ function navigateTo(screenId) {
     }
 }
 
+function validateProfileAndNavigate() {
+    const nameInput = document.getElementById('patientName');
+    const ageInput = document.getElementById('patientAge');
+    const genderInput = document.getElementById('patientGender');
+    const errorMsg = document.getElementById('profileError');
+
+    if (!nameInput || nameInput.value.trim() === '') {
+        if (errorMsg) {
+            errorMsg.textContent = "Please enter the patient's Full Name before continuing.";
+            errorMsg.style.display = 'block';
+        }
+        if (nameInput) nameInput.focus();
+        return;
+    }
+
+    if (!ageInput || ageInput.value.trim() === '') {
+        if (errorMsg) {
+            errorMsg.textContent = "Please enter the patient's Age before continuing.";
+            errorMsg.style.display = 'block';
+        }
+        if (ageInput) ageInput.focus();
+        return;
+    }
+
+    if (!genderInput || genderInput.value === '') {
+        if (errorMsg) {
+            errorMsg.textContent = "Please select the patient's Gender before continuing.";
+            errorMsg.style.display = 'block';
+        }
+        if (genderInput) genderInput.focus();
+        return;
+    }
+
+    if (errorMsg) {
+        errorMsg.style.display = 'none';
+    }
+    navigateTo('screen-upload');
+}
+
 // IMAGE UPLOAD & PREVIEW
 const fileInput = document.getElementById('imageInput');
 const uploadArea = document.getElementById('uploadArea');
@@ -72,7 +111,7 @@ async function startAnalysis() {
 
     const formData = new FormData();
     const fileInput = document.getElementById('imageInput');
-    const name = document.getElementById('patientName').value || 'Ahmed Khan';
+    const name = document.getElementById('patientName').value.trim();
     const age = document.getElementById('patientAge').value;
     const gender = document.getElementById('patientGender').value;
     const phone = document.getElementById('patientPhone').value;
@@ -126,11 +165,9 @@ function safeSetHTML(id, html) {
 }
 
 function updateResultScreen(data) {
+    currentReportData = data; // Store globally for save feature
+
     // Set Timestamp
-    const now = new Date();
-    const options = { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-    const timeStr = now.toLocaleString('en-US', options).replace(',', ' •');
-    safeSetText('res-timestamp', timeStr);
 
     // Basic Details (use fallbacks to avoid showing 'undefined')
     safeSetText('res-patient-name', data.patient || 'N/A');
@@ -220,3 +257,56 @@ window.onload = () => {
     navigateTo('screen-home');
 };
 
+let currentReportData = null; // Store data easily for downloading
+
+function saveReport() {
+    if (!currentReportData) {
+        showNotification("No clinical data available to save.");
+        return;
+    }
+
+    // 1. Show Web Interface Notification
+    showNotification("Record Saved");
+
+    // 2. Download File to Computer
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentReportData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+
+    // Create sensible file name using patient name
+    const patientNameClean = (currentReportData.patient || "Patient").replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadAnchorNode.setAttribute("download", `clinical_report_${patientNameClean}_${dateStr}.json`);
+
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+function showNotification(message) {
+    let notif = document.getElementById('app-notification');
+    if (!notif) {
+        notif = document.createElement('div');
+        notif.id = 'app-notification';
+        notif.style.position = 'fixed';
+        notif.style.bottom = '20px';
+        notif.style.left = '50%';
+        notif.style.transform = 'translateX(-50%)';
+        notif.style.backgroundColor = '#10B981'; // Tailwind Green
+        notif.style.color = '#ffffff';
+        notif.style.padding = '12px 24px';
+        notif.style.borderRadius = '30px';
+        notif.style.fontWeight = '600';
+        notif.style.zIndex = '9999';
+        notif.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+        notif.style.transition = 'opacity 0.3s ease';
+        document.body.appendChild(notif);
+    }
+
+    notif.innerText = message;
+    notif.style.opacity = '1';
+
+    setTimeout(() => {
+        notif.style.opacity = '0';
+    }, 3000);
+}
