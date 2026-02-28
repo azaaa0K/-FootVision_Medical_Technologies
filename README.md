@@ -1,4 +1,4 @@
-# 📁 SINDH DIABETIC FOOT SCANNER (Hybrid AI Edition)
+# 📁 FootVision Medical Technologies.
 ================================================
 
 **🏥 Medical AI Analysis Tool for Foot Ulcer Detection**  
