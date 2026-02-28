@@ -16,11 +16,18 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 # Create uploads folder
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic'}
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def allowed_file(file):
+    if file.filename and '.' in file.filename:
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        if ext in ALLOWED_EXTENSIONS:
+            return True
+    # Fallback to mimetype if extension is missing/weird
+    if file.mimetype and file.mimetype.startswith('image/'):
+        return True
+    return False
 
 def medical_foot_analysis(image_path, symptoms="none", patient_name="Ahmed Khan", age="Unknown", gender="Unknown", phone="N/A"):
     """MEDICAL HSV ANALYSIS - Hospital Standard"""
@@ -81,8 +88,6 @@ def medical_foot_analysis(image_path, symptoms="none", patient_name="Ahmed Khan"
         'phone': phone
     }
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -103,68 +108,84 @@ def predict():
     if file.filename == '':
         return jsonify({'error': 'No file selected', 'success': False}), 400
     
-    if file and allowed_file(file.filename):
+    if file and allowed_file(file):
         try:
-            # Send to Colab API as requested (using stream directly)
-            api_url = "https://percolative-glennis-gainfully.ngrok-free.dev/api/dfu"
-            
-            # Ensure the stream is reset before sending
-            file.stream.seek(0)
-            files = {'image': file.stream}
-            data = {
-                'name': patient_name,
-                'symptoms': symptoms
-            }
-            
-            response = requests.post(api_url, files=files, data=data, timeout=60)
-            
-            # Reset stream again and save file locally for the frontend preview
+            # Save the file first so we can always show the preview image
             file.stream.seek(0)
             filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
-            
-            response.raise_for_status()
-            result_data = response.json()
-            
-            # Intercept 'No foot visible' logic to map exact UI required dictionary
-            if result_data.get('foot_detected') is False or "NO FOOT VISIBLE" in str(result_data.get('diagnosis', '')).upper() or "NO FOOT" in str(result_data.get('diagnosis', '')).upper():
+
+            result_data = None
+            used_fallback = False
+
+            # ── Try Local AI API first ──────────────────────────────────────
+            try:
+                api_url = "http://localhost:5000/api/dfu"
+                with open(filepath, 'rb') as img_stream:
+                    api_files = {'image': img_stream}
+                    api_data = {'name': patient_name, 'symptoms': symptoms}
+                    response = requests.post(api_url, files=api_files, data=api_data, timeout=60)
+                response.raise_for_status()
+                result_data = response.json()
+            except Exception as api_err:
+                # Colab API failed → silently fall back to local HSV analysis
+                print(f"[FALLBACK] Colab API error: {api_err}")
+                used_fallback = True
+
+            # ── Fallback: local HSV/CV2 analysis ───────────────────────────
+            if used_fallback or result_data is None:
+                local = medical_foot_analysis(
+                    filepath,
+                    symptoms=symptoms,
+                    patient_name=patient_name,
+                    age=age,
+                    gender=gender,
+                    phone=phone
+                )
                 result_data = {
-                    "diagnosis": "❓ NO FOOT VISIBLE",
-                    "risk_score": "0%",
-                    "findings": "No foot detected in uploaded photo. Please take a clear photo showing ONLY the foot.",
-                    "urdu_alert": "🛑 پاؤں نظر نہیں آ رہا!",
-                    "action": "دوبارہ پاؤں کی واضح تصویر لیں - صرف پاؤں دکھائیں",
-                    "foot_detected": False,
-                    "error_type": "no_foot"
+                    'diagnosis':   local['diagnosis'],
+                    'risk_score':  local['risk_score'],
+                    'findings':    f"Redness index: {local['redness']} (local CV2 analysis — Colab offline)",
+                    'urdu_alert':  local['urdu'],
+                    'action':      local['action'],
+                    'foot_detected': True,
+                    'source':      'local_fallback'
                 }
 
-            # Ensure patient form fields are present in the returned result so the frontend
-            # does not display "undefined" when fields are missing from the API.
+            # ── Intercept 'No foot visible' ─────────────────────────────────
+            if result_data.get('foot_detected') is False or \
+               "NO FOOT VISIBLE" in str(result_data.get('diagnosis', '')).upper() or \
+               "NO FOOT" in str(result_data.get('diagnosis', '')).upper():
+                result_data = {
+                    "diagnosis":    "❓ NO FOOT VISIBLE",
+                    "risk_score":   "0%",
+                    "findings":     "No foot detected in uploaded photo. Please take a clear photo showing ONLY the foot.",
+                    "urdu_alert":   "🛑 پاؤں نظر نہیں آ رہا!",
+                    "action":       "دوبارہ پاؤں کی واضح تصویر لیں - صرف پاؤں دکھائیں",
+                    "foot_detected": False,
+                    "error_type":   "no_foot"
+                }
+
+            # ── Stamp patient metadata ──────────────────────────────────────
             if not isinstance(result_data, dict):
                 result_data = {}
             result_data.setdefault('patient', patient_name or '')
-            result_data.setdefault('age', age or 'N/A')
-            result_data.setdefault('gender', gender or 'N/A')
-            result_data.setdefault('phone', phone or 'N/A')
-            
-            # The API returns the result at the top level, or sometimes nested if we mimic the old format
-            # We return it nested under 'result' for the frontend compatibility, or just map it directly.
-            
+            result_data.setdefault('age',     age    or 'N/A')
+            result_data.setdefault('gender',  gender or 'N/A')
+            result_data.setdefault('phone',   phone  or 'N/A')
+
             return jsonify({
                 'success': True,
-                'image': f"/static/uploads/{filename}",
-                'result': result_data
+                'image':   f"/static/uploads/{filename}",
+                'result':  result_data
             })
-        except requests.exceptions.Timeout:
-            return jsonify({'error': 'API request timed out after 60 seconds', 'success': False}), 504
-        except requests.exceptions.RequestException as e:
-            return jsonify({'error': f'API connection error: {str(e)}', 'success': False}), 502
+
         except Exception as e:
             return jsonify({'error': f'Analysis failed: {str(e)}', 'success': False}), 500
     
-    return jsonify({'error': 'Invalid file type', 'success': False}), 400
+    return jsonify({'error': f'Invalid file type. File uploaded: {file.filename}. Allowed types: png, jpg, jpeg, gif, webp, heic', 'success': False}), 400
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5050)
